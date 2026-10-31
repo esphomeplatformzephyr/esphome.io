@@ -1,229 +1,117 @@
 ---
-description: "Configuration for the Zephyr platform for ESPHome."
-title: "Zephyr Platform"
+description: "Options shared by every platform that builds with the Zephyr framework."
+title: "Zephyr"
 ---
 
 > [!NOTE]
-> Support for the Zephyr platform is still experimental. Not every ESPHome component or feature
+> Support for Zephyr is still experimental. Not every ESPHome component or feature
 > is available on every variant.
 
-This component contains platform-specific options for an ESPHome platform enabling [Zephyr RTOS](https://zephyrproject.org/).
-Zephyr RTOS is a Linux Foundation initiative to provide a common real time operating system across vendors.
+[Zephyr](https://zephyrproject.org/) is a Linux Foundation real-time operating system with support
+across chip vendors. ESPHome builds Zephyr as a framework of a microcontroller platform:
+
+| Platform | Variants | Framework types |
+| --- | --- | --- |
+| [ESP32](/components/esp32/#zephyr-framework) | `ESP32`, `ESP32C3`, `ESP32C5`, `ESP32C6`, `ESP32H2`, `ESP32S3` | `zephyr` |
+| [nRF](/components/nrf/) | `NRF52`, `NRF5340`, `NRF54L15`, `NRF54LM20A` | `ncs` (default), `zephyr` |
+| [NXP](/components/nxp/) | `MCXN236` | `zephyr` |
+| [Renesas](/components/renesas/) | `RA4M1` | `zephyr` |
+| [RP2](/components/rp2/#zephyr-framework) | `RP2040`, `RP2350` | `zephyr` |
+| [Silicon Labs](/components/silabs/) | `EFR32BG27`, `EFR32MG24`, `SIMG301`, `SIWX917` | `zephyr` (default), `silabs` (not `SIMG301`) |
+| [STM32](/components/stm32/) | `STM32C5`, `STM32F1`, `STM32F4`, `STM32L4`, `STM32U5` | `zephyr` |
+
+`esp32` and `rp2` also build with ESP-IDF and Arduino, so they need `type: zephyr`; the other platforms
+build only with Zephyr. Each platform page lists its variants, default boards, and how to flash them.
+This page covers the options every one of these platforms shares.
 
 Working, compile-tested example configs for every current variant and board are maintained at
 [esphomeplatformzephyr/zephyr-examples](https://github.com/esphomeplatformzephyr/zephyr-examples).
 
-
-
 ```yaml
 # Example configuration entry
-zephyr:
-  variant: esp32c6
+esp32:
+  variant: ESP32C6
+  framework:
+    type: zephyr
 ```
 
 ## Configuration variables
 
-- **variant** (**Required**, string): The chip Zephyr will build for. See [Variants](#variants) below
-  for the current list of variants available
+These go directly under the platform key (`esp32:`, `nrf:`, `stm32:`, and so on):
+
+- **variant** (**Required**, string): The chip to build for. See the platform's own page for its
+  variants.
 - **board** (*Optional*, string): The Zephyr board identifier to build for, e.g. `esp32c6_devkitc`.
-  Typically defaults to a variant-specific development board (see [Variants](#variants)). Accepts either
-  a bare board name or a fully-qualified `board/soc/qualifier` string; ESPHome automatically qualifies
-  a bare name using the variant's own SoC/qualifier. A board with hardware revisions also accepts an
-  `@<revision>` suffix, e.g. `beetle_esp32c3@2.0.0`. See [Board revisions](#board-revisions).
-- **board_source** (*Optional*): Fetch board definitions (a `boards/<vendor>/<board>/board.yml` and
-  friends) from somewhere other than the selected framework's own upstream tree — for example a
-  custom board not yet merged upstream. A git source takes its own **refresh** (*Optional*,
-  [Time](/guides/configuration-types#time)), independent of **framework** → **refresh**, mirroring
-  [external components' `refresh`](/components/external_components/#refresh). Defaults to `1d`. See
-  [`board_source`](#board_source).
-- **framework** (*Optional*, mapping): Which SDK to build against, its version, where to fetch it
-  from, and (for a git **source**) its own **refresh** — independent of **board_source**'s. See
-  [`framework`](#framework).
-- **kconfig_options** (*Optional*, mapping): Raw Zephyr Kconfig passthrough. See [`kconfig_options`](#kconfig_options).
-- **log_level** (*Optional*, string): Zephyr's own native logging verbosity — separate from
-  ESPHome's `logger:` `level:`, and off by default. One of `NONE`, `ERROR`, `WARN`, `INFO`, `DEBUG`,
-  `VERBOSE`. Defaults to `ERROR`. See [Zephyr's own logging vs. heavy debug levels](#zephyrs-own-logging-vs-heavy-debug-levels)
-  before turning this up.
-- **overlays** (*Optional*, mapping): Raw devicetree overlay passthrough for the main application image
-  and/or the `mcuboot` bootloader image. See [`overlays`](#overlays).
-- **shields** (*Optional*, list of strings): Zephyr shields to stack onto **board** — physical
-  add-on boards (e.g. an nRF7002 Wi-Fi/Zigbee companion board) that plug into a connector the base
-  board exposes (`arduino_header`, `mikrobus`, etc.) and contribute their own devicetree
-  overlay/Kconfig fragments. See [`shields`](#shields).
-- **shield_source** (*Optional*): Fetch shield definitions from somewhere other than **board_source**
-  (or the selected framework's own upstream tree, if **board_source** isn't set either) — only needed
-  when a shield genuinely lives in a different repo than the board. Same shape as **board_source**,
-  including its own **refresh**. See [`shields`](#shields).
-- **snippets** (*Optional*, list of strings): Zephyr snippet names passed through to `west build -S`.
-  See [`snippets`](#snippets).
-- **snippet_source** (*Optional*): Fetch snippet definitions from somewhere other than
-  **board_source** (or the selected framework's own upstream tree) — only needed when a snippet
-  genuinely lives in a different repo than the board. Same shape as **board_source**, including its
-  own **refresh**. See [`snippets`](#snippets).
+  Defaults to a variant-specific development board. Accepts either a bare board name or a
+  fully-qualified `board/soc/qualifier` string; ESPHome automatically qualifies a bare name using the
+  variant's own SoC/qualifier. A board with hardware revisions also accepts an `@<revision>` suffix,
+  e.g. `beetle_esp32c3@2.0.0`. See [Board revisions](#board-revisions).
 - **watchdog_timeout** (*Optional*, [Time](/guides/configuration-types#time)): How long the main loop
-  may go without checking in before Zephyr's hardware watchdog resets the device. `0` disables the
-  watchdog entirely. Otherwise must be between 5 and 60 seconds — some variants' watchdog hardware
-  can't reach the full range and min and max are configured by variant in those cases,
-  See [Variants](#variants).
-- **single_slot** (*Optional*, boolean): MCUboot single-slot option for variants too
-  flash-constrained for the normal two-slot layout. No live OTA path — serial/wired flashing only.
-  Defaults to `false`. See [`single_slot`](#single_slot).
-- **west_version** (*Optional*, string): Override the version of `west` used to fetch and build the
-  Zephyr workspace. Defaults to the version in esphome/components/zephyr/requirements_west.txt.
-- **ninja_version** (*Optional*, string): Override the version of `ninja` used to build. Defaults to the
-  version in esphome/components/zephyr/requirements_west.txt.
-- **advanced** (*Optional*, mapping): Mostly variant-specific options that don't apply across every
-  variant, plus **runner** and **main_stack_size**, which apply to all of them. See [`advanced`](#advanced).
+  may go without checking in before the hardware watchdog resets the device. `0` disables the
+  watchdog entirely. Otherwise must be between 5 and 60 seconds; some variants' watchdog hardware
+  can't reach the full range, and their platform page gives the range. Defaults to `10s`, or the
+  variant's maximum when that is lower.
+- **framework** (*Optional*, mapping): Which SDK to build against and every Zephyr-only option:
 
-## Variants
+  - **type** (*Optional*, string): The SDK. See [`framework`](#framework).
+  - **version** (*Optional*, string): The SDK version. See [`framework`](#framework).
+  - **source** (*Optional*): Where to fetch the SDK from. See [`framework`](#framework).
+  - **refresh** (*Optional*, [Time](/guides/configuration-types#time)): How often a git **source** is
+    re-checked. Defaults to `1d`.
+  - **board_source** (*Optional*): Fetch board definitions from somewhere other than the SDK's own
+    tree. A git source takes its own **refresh**, defaulting to `1d`. See [`board_source`](#board_source).
+  - **shields** (*Optional*, list of strings): Zephyr shields to stack onto **board**. See [`shields`](#shields).
+  - **shield_source** (*Optional*): Fetch shield definitions from somewhere other than **board_source**.
+    Same shape as **board_source**. See [`shields`](#shields).
+  - **snippets** (*Optional*, list of strings): Zephyr snippet names passed to `west build -S`. See
+    [`snippets`](#snippets).
+  - **snippet_source** (*Optional*): Fetch snippet definitions from somewhere other than
+    **board_source**. Same shape as **board_source**. See [`snippets`](#snippets).
+  - **kconfig_options** (*Optional*, mapping): Raw Zephyr Kconfig passthrough. See
+    [`kconfig_options`](#kconfig_options).
+  - **overlays** (*Optional*, mapping): Raw devicetree overlays for the application and/or `mcuboot`
+    image. See [`overlays`](#overlays).
+  - **modules** (*Optional*, list): Extra west modules, or versions for the ones components request.
+    See [`modules`](#modules).
+  - **single_slot** (*Optional*, boolean): MCUboot with a single application slot, for chips too small for
+    two. No OTA. Defaults to `false`. See [`single_slot`](#single_slot).
+  - **log_level** (*Optional*, string): Zephyr's own logging verbosity, separate from ESPHome's
+    `logger:` `level:`. One of `NONE`, `ERROR`, `WARN`, `INFO`, `DEBUG`, `VERBOSE`. Defaults to `ERROR`.
+    See [Zephyr's own logging vs. heavy debug levels](#zephyrs-own-logging-vs-heavy-debug-levels)
+    before turning this up.
+  - **advanced** (*Optional*, mapping): See [`advanced`](#advanced).
 
-| Vendor | Variant | Chip family | Default board | Default framework | Supports |
-| --- | --- | --- | --- | --- | --- |
-| Espressif | `esp32` | Original ESP32 (Xtensa, dual-core) | [`esp32_devkitc`](https://docs.zephyrproject.org/latest/boards/espressif/esp32_devkitc/doc/index.html) | mainline Zephyr | Wi-Fi, BLE |
-| Espressif | `esp32c3` | ESP32-C3 (RISC-V, single-core) | [`esp32c3_devkitm`](https://docs.zephyrproject.org/latest/boards/espressif/esp32c3_devkitm/doc/index.html) | mainline Zephyr | Wi-Fi, BLE |
-| Espressif | `esp32c5` | ESP32-C5 (RISC-V, dual-band Wi-Fi 6) | [`esp32c5_devkitc`](https://docs.zephyrproject.org/latest/boards/espressif/esp32c5_devkitc/doc/index.html) | mainline Zephyr | Wi-Fi (2.4GHz + 5GHz), BLE, Thread (via `openthread:`) |
-| Espressif | `esp32c6` | ESP32-C6 (RISC-V) | [`esp32c6_devkitc`](https://docs.zephyrproject.org/latest/boards/espressif/esp32c6_devkitc/doc/index.html) | mainline Zephyr | Wi-Fi, BLE, Thread (via `openthread:`) |
-| Espressif | `esp32h2` | ESP32-H2 (RISC-V) | [`esp32h2_devkitm`](https://docs.zephyrproject.org/latest/boards/espressif/esp32h2_devkitm/doc/index.html) | mainline Zephyr | BLE, Thread (via `openthread:`) |
-| Espressif | `esp32s3` | ESP32-S3 (Xtensa, dual-core) | [`esp32s3_devkitc`](https://docs.zephyrproject.org/latest/boards/espressif/esp32s3_devkitc/doc/index.html) | mainline Zephyr | Wi-Fi, BLE |
-| Nordic | `nrf5340` | nRF5340 application core (Cortex-M33) | [`nrf7002dk/nrf5340/cpuapp`](https://docs.zephyrproject.org/latest/boards/nordic/nrf7002dk/doc/index.html) | nRF Connect SDK (NCS) | Wi-Fi (via the onboard nRF7002) |
-| Nordic | `nrf52` | nRF52840 (Cortex-M4) | [`adafruit_feather_nrf52840`](https://docs.zephyrproject.org/latest/boards/adafruit/feather_nrf52840/doc/index.html) | nRF Connect SDK (NCS) | BLE, Thread (via `openthread:`), Zigbee (via `zigbee:`) |
-| Nordic | `nrf54l15` | nRF54L15 (Cortex-M33) | [`nrf54l15dk`](https://docs.zephyrproject.org/latest/boards/nordic/nrf54l15dk/doc/index.html) | nRF Connect SDK (NCS) | BLE, Thread (via `openthread:`), Zigbee (via `zigbee:`) |
-| Nordic | `nrf54lm20a` | nRF54LM20A (Cortex-M33) | [`nrf54lm20dk`](https://docs.zephyrproject.org/latest/boards/nordic/nrf54lm20dk/doc/index.html) | nRF Connect SDK (NCS) | BLE, Thread (via `openthread:`), Zigbee (via `zigbee:`) |
-| NXP | `mcxn236` | NXP MCX N236 (Cortex-M33) | [`frdm_mcxn236`](https://docs.zephyrproject.org/latest/boards/nxp/frdm_mcxn236/doc/index.html) | mainline Zephyr | No wireless |
-| Raspberry Pi | `rp2040` | Raspberry Pi RP2040 (Cortex-M0+) | [`rpi_pico`](https://docs.zephyrproject.org/latest/boards/raspberrypi/rpi_pico/doc/index.html) | mainline Zephyr | No wireless |
-| Raspberry Pi | `rp2350` | Raspberry Pi RP2350 (Cortex-M33, dual-core) | [`rpi_pico2`](https://docs.zephyrproject.org/latest/boards/raspberrypi/rpi_pico2/doc/index.html) | mainline Zephyr | No wireless |
-| Renesas | `ra4m1` | Renesas RA4M1 (Cortex-M4) | [`ek_ra4m1`](https://docs.zephyrproject.org/latest/boards/renesas/ek_ra4m1/doc/index.html) | mainline Zephyr | No wireless |
-| Silicon Labs | `efr32bg27` | Silicon Labs EFR32BG27 (Cortex-M33) | [`xg27_dk2602a`](https://docs.zephyrproject.org/latest/boards/silabs/dev_kits/xg27_dk2602a/doc/index.html) | mainline Zephyr | BLE |
-| Silicon Labs | `efr32mg24` | Silicon Labs EFR32MG24 (Cortex-M33) | [`xg24_ek2703a`](https://docs.zephyrproject.org/latest/boards/silabs/dev_kits/xg24_ek2703a/doc/index.html) | mainline Zephyr | BLE, Thread (via `openthread:`) |
-| Silicon Labs | `simg301` | Silicon Labs SiMG301 (Cortex-M33) | `simg301_ek2719a` (custom board, see [Silicon Labs](#silicon-labs)) | mainline Zephyr | BLE |
-| Silicon Labs | `siwx917` | Silicon Labs SiWx917 (Cortex-M4F, Wi-Fi 6) | [`siwx917_dk2605a`](https://docs.zephyrproject.org/latest/boards/silabs/dev_kits/siwx917_dk2605a/doc/index.html) | mainline Zephyr | Wi-Fi, BLE |
-| STMicroelectronics | `stm32f1` | STM32F1 (Cortex-M3) | [`nucleo_f103rb`](https://docs.zephyrproject.org/latest/boards/st/nucleo_f103rb/doc/index.html) | mainline Zephyr | No wireless |
-| STMicroelectronics | `stm32c5` | STM32C5 (Cortex-M33) | [`nucleo_c5a3zg`](https://docs.zephyrproject.org/latest/boards/st/nucleo_c5a3zg/doc/index.html) | mainline Zephyr | No wireless |
-| STMicroelectronics | `stm32f4` | STM32F4 (Cortex-M4) | [`nucleo_f401re`](https://docs.zephyrproject.org/latest/boards/st/nucleo_f401re/doc/index.html) | mainline Zephyr | No wireless |
-| STMicroelectronics | `stm32l4` | STM32L4 (Cortex-M4) | [`nucleo_l476rg`](https://docs.zephyrproject.org/latest/boards/st/nucleo_l476rg/doc/index.html) | mainline Zephyr | No wireless |
-| STMicroelectronics | `stm32u5` | STM32U5 (Cortex-M33) | [`stm32u5g9j_dk1`](https://docs.zephyrproject.org/latest/boards/st/stm32u5g9j_dk1/doc/index.html) | mainline Zephyr | No wireless |
+## Moving from `zephyr:`
 
-**Vendor** groups variants by silicon manufacturer. Internally, some vendors are split into more
-than one family — a finer grouping used for shared code generation where the hardware differs too
-much to share it, even from the same vendor. Silicon Labs is one such case: `efr32bg27`, `efr32mg24`
-and `simg301` share one family, while `siwx917` is unrelated silicon with separate ADC, pinctrl, and
-flashing code.
+Earlier builds used a top-level `zephyr:` key. The same options now go under the platform:
+**variant**, **board** and **watchdog_timeout** directly under it, everything else under
+`framework:`. On `esp32` and `rp2`, add `type: zephyr`.
 
-It is not recommended to use variants that have existing platforms for other than experimental purposes.
+```yaml
+# Before
+zephyr:
+  variant: esp32c6
+  board: esp32c6_devkitc
+  snippets:
+    - espressif-flash-4M
+
+# After
+esp32:
+  variant: ESP32C6
+  board: esp32c6_devkitc
+  framework:
+    type: zephyr
+    snippets:
+      - espressif-flash-4M
+```
 
 **SMP** (symmetric multiprocessing) is one kernel image and one scheduler shared across cores;
 threads run on whichever core is free (also can be pinned). **AMP** (asymmetric multiprocessing) is
 separate compiled images, each with its own Kconfig and memory space — this is how almost every
-multi-core chip using Zephyr works today.  Additionally, Platform: Zephyr does not have the ability
-to produce an image for other than the primary core.
+multi-core chip using Zephyr works today. ESPHome only builds an image for the primary core.
 
-See [Serial Load Process](#serial-load-process) for a complete discussion on how to flash a variant.
-
-### Espressif
-
-`esp32` and `esp32s3` are dual-core, but only the first core (PRO_CPU) is used; a warning is logged at
-config time. Espressif is working on SMP solutions for `esp32s3` and `esp32p4`; they have remained
-silent on `esp32`.
-
-The default `esp32s3_devkitc` board assumes an N8 module (8MB flash, no PSRAM). For other modules, add
-Espressif's flash and PSRAM snippets. Octal PSRAM (R8 modules) also needs `CONFIG_SPIRAM_MODE_OCT`, and
-uses GPIO33-37, which are not blocked at config time:
-
-```yaml
-zephyr:
-  variant: esp32s3
-  # N16R8 module: 16MB flash, 8MB octal PSRAM
-  snippets:
-    - espressif-flash-16M
-    - espressif-psram-8M
-  kconfig_options:
-    CONFIG_SPIRAM_MODE_OCT: true
-```
-
-### Nordic
-
-Nordic provides its own vendor Zephyr, "nRF Connect SDK (NCS)", but `framework: type: zephyr` builds
-against mainline Zephyr instead. See [`framework`](#framework).
-
-`nrf5340` builds only the application core, so BLE, Thread and Zigbee (which need the network core)
-are not available; Wi-Fi uses the onboard nRF7002. A Wi-Fi build is too large for the default MCUboot
-slot and needs `single_slot: true` plus a partition overlay (see the example configs). `wifi: ap:` is
-not supported yet. With `framework: type: zephyr` an insecure software random number generator is used,
-and a warning is logged; NCS, the default, uses the chip's hardware one.
-
-### NXP
-
-`watchdog_timeout` on `mcxn236` is `0` or `5s`–`60s`.
-
-The FRDM-MCXN236's devicetree places `slot1_partition` so that it runs 8K into `storage_partition`, and the build
-stops with a flash layout error. Until Zephyr fixes the board, move `slot1_partition` in both the app and MCUboot
-images:
-
-```yaml
-zephyr:
-  variant: mcxn236
-  overlays:
-    app: |
-      &slot1_partition { reg = <0x82000 DT_SIZE_K(440)>; };
-    mcuboot: |
-      &slot1_partition { reg = <0x82000 DT_SIZE_K(440)>; };
-```
-
-MCUboot is the default bootloader and is needed to boot the default board. MCUboot can only run in upgrade-only
-mode on this chip, so there is no swap method and no OTA.
-
-The board leaves GPIO port 5 disabled. To use `P5_x` pins, enable it with an overlay:
-
-```yaml
-zephyr:
-  overlays:
-    app: |
-      &gpio5 { status = "okay"; };
-```
-
-### Raspberry Pi
-
-`rp2350` and `rp2040` do not have SMP support. `rp2350`'s real hardware TRNG currently hangs the boot
-sequence with Zephyr's driver, so it uses the same software-PRNG fallback (`TEST_RANDOM_GENERATOR`) as
-`rp2040` pending an upstream update. `watchdog_timeout`'s upper bound is lower than the generic 60s
-ceiling on this hardware watchdog: **8s** on `rp2040`, and **16s** on `rp2350`, due to clock limitations.
-
-### Renesas
-
-The initial variant: `ra4m1` is a Renesas RA4M1 device. `watchdog_timeout` has no usable range on
-this hardware: its WDT clock tops out at ~5.6s regardless of what's requested, so `0` or exactly `5s`
-are the only valid values.
-
-### Silicon Labs
-
-Silicon Labs' provides its own vendor SDK, "Simplicity SDK for Zephyr"
-(`framework: type: silabs`), it is currently the alternate to the default mainline Zephyr build
-— See [`framework`](#framework) and see [`advanced`](#advanced) for its `commander_version` option.
-
-`siwx917` has no MCUboot/OTA support: its default board's flash is a single fixed partition, and
-this chip's real firmware-upgrade path is Silicon Labs' own RPS mechanism, not MCUboot-compatible.
-There is no `advanced: bootloader:` option for this variant. UART and I2C pin remapping are not
-supported yet — only the board's default pins work; SPI pin remapping is supported. The MAC address
-reads as all-zero, since mainline Zephyr has no HWINFO backend for this chip yet. A factory-fresh
-board also needs a one-time network-coprocessor firmware update before Wi-Fi works — see
-[Silicon Labs Serial Load Process](#silicon-labs-serial-load-process). Wi-Fi scanning and AP
-association work, but a full STA connection is not yet reliable, due to an issue in the
-upstream Zephyr/WiseConnect Wi-Fi driver rather than this platform.
-
-`efr32bg27` is BLE only. The onboard sensors of its default board (Si7021, VEML6035, Si7210) are
-powered on at boot.
-
-`simg301`'s default board is not in mainline Zephyr yet: set `board_source:` to
-`https://github.com/esphomeplatformzephyr/custom_zephyr_boards`. It needs Zephyr 4.5.0 or later
-(the default). The UART can only use pins PA0–PA8 and PB0–PB3; ADC and SPI are not supported yet.
-
-### STMicroelectronics
-
-`watchdog_timeout` on `stm32l4` and `stm32f4` is `0` or `5s`–`32s`; on `stm32f1` is `0` and `5s`-`26s`;
-`stm32u5` and `stm32c5` is `0` and `5s`-`60s`.
-
-The Seeed XIAO STM32C5 (`board: xiao_stm32c5`) needs Zephyr 4.5.0 or later (the default). ESPHome
-adds the USB clock and USB pins that the board's devicetree is missing, so the USB serial port works.
+It is not recommended to use Zephyr on a chip that has an existing ESPHome framework (ESP-IDF or
+Arduino) for other than experimental purposes.
 
 ## Serial Load Process
 
@@ -253,8 +141,8 @@ Use of `esphome run/upload` is emerging capability for non esp32 families. If fr
 `west flash` is recommended.  At present, `esphome run/esphome upload --device <port>`
 attempts to use the board's own default runner and this works as long as that runner's external tool is
 installed, For example, jlink needs SEGGER's J-Link software, stm32cubeprogrammer needs ST's CLI tool,
-nrfutil needs Nordic's CLI.  `<port>` is a serial port path (e.g. /dev/ttyACM0, COM3).  Vendor sections
-below call out exceptions to this capability.
+nrfutil needs Nordic's CLI.  `<port>` is a serial port path (e.g. /dev/ttyACM0, COM3).  Each platform
+page calls out exceptions to this capability.
 
 Set `advanced: runner:` to override the board's default runner persistently, for boards whose default
 runner is broken, unavailable, or otherwise unwanted — see [`advanced`](#advanced). Any string is
@@ -277,119 +165,6 @@ Most variants have been overridden to use `ECDSA-P256` verification code allowin
 image size.  If using a different verification mode, then it is explicitly documented below. Care must
 be given to ensure the sizing of the MCUboot partition is correct.
 
-### Espressif Serial Load Process
-
-Espressif chips have a ROM bootloader that can flash images over serial from blank silicon.
-MCUboot is not optional on `esp32*` — there is no `advanced: bootloader: none` option for any
-`esp32*` variant. A plain `esphome run` with no `--device` works out of the box, even on blank
-silicon: the ROM bootloader accepts a full sysbuild image over serial, and Zephyr's own esptool
-runner is sysbuild-domain-aware, so MCUboot and the signed application are flashed together in one
-command, every time.  Espressif chips are signed with a `RSA-2048` verification code.
-
-### Nordic Serial Load Process
-
-Nordic chips do not have a ROM bootloader, installation via SWD is expected for serial flash.
-
-The `nrf52` variant can instead keep a serial DFU bootloader that the board already has, with
-`advanced: bootloader:` (see [`advanced`](#advanced)):
-
-- `adafruit_nrf52_sd140_v6` or `adafruit_nrf52_sd140_v7`: the Adafruit UF2 bootloader, with the S140 v6 or v7
-  SoftDevice. `esphome compile` builds a `firmware.zip`, and `esphome upload` reboots the running application into
-  the bootloader (a 1200 baud touch on the USB serial port) and sends the package over serial DFU with
-  `adafruit-nrfutil`, which is installed on first use. `esphome logs --reset` reboots the application with a
-  2001 baud touch.
-- `nrf`: the Nordic Open DFU bootloader factory-flashed on the nRF52840 Dongle (`board: nrf52840dongle`). Upload uses
-  Nordic's `nrfutil`. On the dongle, the reboot into the bootloader goes through P0.19, which is wired to RESET.
-
-Both keep the vendor bootloader, so there is no MCUboot and no OTA. The touch that reboots into the bootloader is
-`advanced: dfu:`, on by default with these bootloaders. Only USB serial port 0 reacts to it.
-
-`nrf54l15` and `nrf54lm20a` default to MCUboot and also accept `advanced: bootloader: none`.
-`nrf5340` always uses MCUboot.
-
-### NXP Serial Load Process
-
-The FRDM-MCXN236 has two USB ports. The **MCU-Link** port powers the board, flashes it through the on-board
-MCU-Link debug probe, and carries the console UART, so logs appear on its serial port (`/dev/ttyACM0` on Linux).
-The **MCU USB** port connects to the chip's own USB controller and is only used with `logger: hardware_uart: USB_CDC`
-or [`usb_cdc_acm`](/components/usb_cdc_acm/).
-
-The board's default flash runner is NXP's LinkServer, which must be installed separately. Instead, pyOCD, which
-ships with the Zephyr tools, works with the MCU-Link's factory firmware. Install the chip's support pack once with
-`pyocd pack install mcxn236`, and select the runner:
-
-```yaml
-zephyr:
-  advanced:
-    runner: pyocd
-```
-
-Then flash with `esphome run <config-file> --device /dev/ttyACM0`.
-
-### Raspberry Pi Serial Load Process
-
-`rp2040`/`rp2350` have a ROM bootloader, `BOOTSEL`, that flashes the chip directly — MCUboot is
-optional (default `advanced: bootloader:`). On blank silicon, the physical BOOTSEL button must
-be held once to enter BOOTSEL mode manually for that first flash. When MCUboot is enabled, ESPHome's
-own upload code (`_upload_using_picotool()`) explicitly flashes both the MCUboot image and the signed
-application together — `picotool` isn't sysbuild-domain-aware the way `west flash` is, so ESPHome
-does that two-image handling itself rather than relying on the tool.
-
-After initial flash via `esphome run`, the `rp2040` and `rp2350` boards use the cross-ecosystem 
-"1200 baud touch" convention: opening the board's USB CDC port at 1200 baud tells firmware to reboot
-into the ROM USB (BOOTSEL) bootloader, so `esphome run` no longer needs the physical BOOTSEL button
-held.
-
-> [!IMPORTANT]
-> Once triggered, BOOTSEL mode is anonymous, therefore, for serial flash, only 1 device should be
-> available to ESPHome.
-
-### Renesas Serial Load Process
-
-Renesas RA MCUs have an on-chip USB boot mode, but that has not been investigated;
-installation via SWD is expected for serial flash.
-
-> [!IMPORTANT]
-> The Arduino Nano R4 is a popular device and comes with a vendor provided bootloader.  Serial
-> flash is recommended using the `arduino-cli upload -b <fqbn> -i <file>` command.
-> `<fqbn>` is `arduino:renesas_uno:nanor4` and `<file>` is the full path to your zephyr.bin file.
-
-### Silicon Labs Serial Load Process
-
-Silicon Labs chips do not have a ROM bootloader, installation via SWD is expected for serial flash.
-
-`framework: type: silabs` flashes via Silicon Labs' own Commander tool instead — see
-[`advanced`](#advanced) for its `commander_version` option.
-
-A factory-fresh `siwx917` board needs a one-time network-coprocessor (NWP) firmware update before
-Wi-Fi works at all — a mismatched NWP firmware version logs `Unexpected NWP firmware version` or
-`NWP device not ready` at boot. Flash the matching image once via Commander:
-`commander rps load <path-to>/SiWG917-B.2.15.5.0.0.12.rps --device SiWG917M111MGTBA`.
-
-### STMicroelectronics Serial Load Process
-
-STM32 boards typically have a ROM-resident "system memory" bootloader, this has been tested
-using the stm32f4 WEACT Black Pill and allowed use of the default dfu-utils using 
-`esphome run <config-file> --device /dev/ttyACM<n>`.  The device had to be in boot mode and
-only oddity was having to put the device back into boot mode after the MCUBoot was loaded.
-Installation via SWD is also typically available for serial flash. MCUboot is optional
-(`advanced: bootloader:`, defaulted to `none` on `stm32l4`; and 'mcuboot` for `stm32f1`,`stm32f4`
-, and `stm32u5`.
-
-The Seeed XIAO STM32C5 ships with a TinyUF2 bootloader, and `esphome run` writes `zephyr.uf2` straight to
-the bootloader's USB disk without mounting it. On Linux, give your user write access to that disk once
-with a udev rule, then unplug and replug the board:
-
-```bash
-echo 'SUBSYSTEM=="block", ATTRS{idVendor}=="2886", ATTRS{idProduct}=="00c5", GROUP="plugdev", MODE="0660"' | sudo tee /etc/udev/rules.d/63-tinyuf2.rules
-sudo udevadm control --reload-rules
-```
-
-For the first flash, put the board into bootloader mode by hand, because the factory firmware cannot reboot
-into it, then run `esphome run <config-file> --device /dev/ttyACM0`. After that, `esphome run` reflashes
-with no button: opening the USB serial port at 1200 baud reboots the app into the bootloader.
-`esphome logs <config-file> --reset` reboots the app.
-
 ## GPIO Pin Numbering
 
 Pins are referenced by a flat number regardless of variant, either as a plain integer or with a `GPIO` prefix —
@@ -398,14 +173,14 @@ port and a pin-within-port, but this is transparent to configuration; use the nu
 board or listed in the board's pinout.
 
 On variants with lettered GPIO ports, the vendor's own notation is also accepted. For example on
-`efr32bg27`, `efr32mg24`, `simg301`, `stm32l4`, `stm32f4`, and `stm32c5` — `PA4`, `PB2`, and so on are accepted, the same string logs and
+`EFR32BG27`, `EFR32MG24`, `SIMG301`, `STM32L4`, `STM32F4`, and `STM32C5` — `PA4`, `PB2`, and so on are accepted, the same string logs and
 `dump_config` print back. This is rejected on variants that don't use a lettered-port notation.
 
-On Nordic variants (`nrf52`, `nrf5340`, `nrf54l15`, `nrf54lm20a`), Nordic's own `P<port>.<pin>` notation is
+On Nordic variants (`NRF52`, `NRF5340`, `NRF54L15`, `NRF54LM20A`), Nordic's own `P<port>.<pin>` notation is
 accepted the same way — `P0.02`, `P1.05`, and so on. This is rejected on variants that don't use
 Nordic's port-banked notation.
 
-On `mcxn236`, NXP's own `P<port>_<pin>` notation is accepted the same way — `P4_18`, `P1_16`, and so on.
+On `MCXN236`, NXP's own `P<port>_<pin>` notation is accepted the same way — `P4_18`, `P1_16`, and so on.
 
 ## `board_source`
 
@@ -415,14 +190,16 @@ own tree. `board_source` points at a different tree to search instead, using the
 
 ```yaml
 # Example configuration entry
-zephyr:
-  variant: esp32c6
+esp32:
+  variant: ESP32C6
   board: my_custom_board
-  board_source:
-    type: git
-    url: https://github.com/example/my-zephyr-boards
-    ref: main
-    refresh: 1d   # how often to re-check this git source -- own knob, independent of framework's
+  framework:
+    type: zephyr
+    board_source:
+      type: git
+      url: https://github.com/example/my-zephyr-boards
+      ref: main
+      refresh: 1d   # how often to re-check this git source -- own knob, independent of framework's
 ```
 
 `board_source` requires **board** to also be set, and the source must contain a
@@ -454,9 +231,11 @@ own `west build -DBOARD=` accepts. Append `@<revision>` directly to **board**:
 
 ```yaml
 # Example configuration entry
-zephyr:
-  variant: esp32c3
+esp32:
+  variant: ESP32C3
   board: beetle_esp32c3@2.0.0
+  framework:
+    type: zephyr
 ```
 
 A revision suffix comes before any qualifier segments, e.g. `my_board@1.0.0/soc/qualifier`. ESPHome
@@ -482,13 +261,13 @@ shields together:
 
 ```yaml
 # Example configuration entry -- an in-tree shield, no shield_source needed
-zephyr:
-  variant: nrf52
+nrf:
+  variant: NRF52
+  board: nrf52840dk
   framework:
     type: zephyr
-  board: nrf52840dk
-  shields:
-    - nrf7002ek
+    shields:
+      - nrf7002ek
 ```
 
 `shield_source` resolves against **board_source**'s own root by default — shields conventionally live
@@ -499,17 +278,19 @@ repo than the board:
 
 ```yaml
 # Example configuration entry -- shield from a different repo than board_source
-zephyr:
-  variant: esp32c6
+esp32:
+  variant: ESP32C6
   board: my_custom_board
-  board_source:
-    type: git
-    url: https://github.com/example/my-zephyr-boards
-  shield_source:
-    type: git
-    url: https://github.com/example/my-zephyr-shields
-  shields:
-    - my_custom_shield
+  framework:
+    type: zephyr
+    board_source:
+      type: git
+      url: https://github.com/example/my-zephyr-boards
+    shield_source:
+      type: git
+      url: https://github.com/example/my-zephyr-shields
+    shields:
+      - my_custom_shield
 ```
 
 ## `framework`
@@ -517,14 +298,14 @@ zephyr:
 `framework` selects which SDK a variant builds against, its version, and (optionally) where to fetch
 it from:
 
-- **type** (*Optional*, string): Which SDK to use. Most variants only support one (mainline Zephyr);
-  `nrf52`, `nrf5340`, `nrf54l15`, and `nrf54lm20a` support `ncs` (the default) and `zephyr` (mainline, as an
-  alternate); `efr32bg27` and `efr32mg24` support mainline Zephyr (the default) and `silabs` (Silicon Labs' own
-  Simplicity SDK for Zephyr, as an alternate). See [Variants](#variants) for each variant's default.
+- **type** (*Optional*, string): Which SDK to use. `zephyr` (mainline Zephyr) works on every platform
+  and is required on `esp32` and `rp2`. `nrf` also takes `ncs` (nRF Connect SDK, its default), and
+  `silabs` also takes `silabs` (Silicon Labs' own Simplicity SDK for Zephyr), except on `SIMG301`.
+  The other platforms default to `zephyr`.
 - **version** (*Optional*, string): The version to build against, in **that SDK's own numbering** —
   defaults to the SDK's own recommended version, currently `4.5.0` for mainline Zephyr and `3.4.1` for NCS
-  (the oldest accepted are `4.4.1` and `3.4.0`; the Espressif variants, `ra4m1`, `rp2040`, `rp2350`,
-  `siwx917` and `simg301` need `4.5.0`). The literal value `recommended` is also accepted as an explicit alias for
+  (the oldest accepted are `4.4.1` and `3.4.0`; the Espressif variants, `RA4M1`, `RP2040`, `RP2350`,
+  `SIWX917` and `SIMG301` need `4.5.0`). The literal value `recommended` is also accepted as an explicit alias for
   that default. Mutually exclusive with **source**, since a source determines
   the version from itself.
 - **source** (*Optional*): Overrides *where the selected SDK is fetched from* — a fork, an unreleased
@@ -542,14 +323,16 @@ it from:
 
 ```yaml
 # Example configuration entry -- default framework and version for the variant
-zephyr:
-  variant: esp32c6
+esp32:
+  variant: ESP32C6
+  framework:
+    type: zephyr
 ```
 
 ```yaml
 # Example configuration entry -- explicit type and version
-zephyr:
-  variant: nrf52
+nrf:
+  variant: NRF52
   framework:
     type: zephyr   # mainline, instead of nrf52's NCS default
     version: "4.5.0"
@@ -557,9 +340,10 @@ zephyr:
 
 ```yaml
 # Example configuration entry -- source: branch/tag of the selected SDK's own official manifest
-zephyr:
-  variant: esp32c6
+esp32:
+  variant: ESP32C6
   framework:
+    type: zephyr
     source:
       type: git
       ref: main
@@ -567,9 +351,10 @@ zephyr:
 
 ```yaml
 # Example configuration entry -- source: alternate remote (a fork)
-zephyr:
-  variant: esp32c6
+esp32:
+  variant: ESP32C6
   framework:
+    type: zephyr
     source:
       type: git
       url: https://github.com/my-fork/zephyr
@@ -578,9 +363,10 @@ zephyr:
 
 ```yaml
 # Example configuration entry -- source: already-initialized local west workspace
-zephyr:
-  variant: esp32c6
+esp32:
+  variant: ESP32C6
   framework:
+    type: zephyr
     source:
       type: local
       path: /home/me/zephyrproject
@@ -611,23 +397,25 @@ Each entry is a list item with:
 
 ```yaml
 # Example configuration entry -- override ncs-zigbee's version
-zephyr:
-  variant: nrf52
-  modules:
-    - name: ncs-zigbee
-      version: 1.4.2
+nrf:
+  variant: NRF52
+  framework:
+    modules:
+      - name: ncs-zigbee
+        version: 1.4.2
 ```
 
 ```yaml
 # Example configuration entry -- your own out-of-tree module
-zephyr:
-  variant: nrf52
-  modules:
-    - name: my_custom_driver
-      source:
-        type: git
-        url: https://github.com/me/my-zephyr-module
-        ref: main
+nrf:
+  variant: NRF52
+  framework:
+    modules:
+      - name: my_custom_driver
+        source:
+          type: git
+          url: https://github.com/me/my-zephyr-module
+          ref: main
 ```
 
 ## `advanced`
@@ -639,77 +427,82 @@ to. **runner** and **main_stack_size** are the exceptions: they apply to every v
 - **runner** (*Optional*, string, all variants): Force a specific `west flash` runner instead of the
   board's default (e.g. `pyocd`, `jlink`, `openocd`). Any string is accepted — valid runner names are
   board/SDK-specific and only knowable after the first compile, so an unrecognized name only logs a
-  warning at compile time, it does not fail config validation. Has no effect on `rp2040`/`rp2350`'s
+  warning at compile time, it does not fail config validation. Has no effect on `RP2040`/`RP2350`'s
   BOOTSEL/picotool flashing, and is overridden by `--device PYOCD` if that's also used. See
   [Serial Load Process](#serial-load-process).
 - **main_stack_size** (*Optional*, int, all variants): Stack size in bytes of the thread that runs the
   ESPHome main loop. Minimum `4096`. Defaults to `8192` on the Espressif variants, the same as the
-  loop task on `platform: esp32`, and to `4096` on all other variants. A larger stack uses more RAM
+  loop task with ESP-IDF, and to `4096` on all other variants. A larger stack uses more RAM
   but gives deep call chains more room. ESPHome OTA over UDP needs more than `4096` on the
   Espressif variants.
-- **bootloader** (*Optional*, string): `none` or `mcuboot` on `rp2040`, `rp2350`, `ra4m1`, `nrf54l15`,
-  `nrf54lm20a` and the STM32 variants. On `nrf52`: `mcuboot`, `adafruit_nrf52_sd140_v6`,
+- **bootloader** (*Optional*, string): `none` or `mcuboot` on `RP2040`, `RP2350`, `RA4M1`, `NRF54L15`,
+  `NRF54LM20A` and the STM32 variants. On `NRF52`: `mcuboot`, `adafruit_nrf52_sd140_v6`,
   `adafruit_nrf52_sd140_v7` or `nrf`, to keep the board's own serial DFU bootloader — see
-  [Nordic Serial Load Process](#nordic-serial-load-process). Defaults to `none` on
-  `rp2040`/`rp2350`/`ra4m1`/`stm32l4`/`stm32c5` — their default boards have no MCUboot-ready layout, so choosing
+  [nRF Serial Load Process](/components/nrf/#serial-load-process). Defaults to `none` on
+  `RP2040`/`RP2350`/`RA4M1`/`STM32L4`/`STM32C5` — their default boards have no MCUboot-ready layout, so choosing
   `mcuboot` there means supplying a fully qualified board and your own MCUboot-shaped partition overlay via
   `overlays` (for example `board: rpi_pico/rp2040/mcuboot`). Defaults to `mcuboot` on the others. OTA needs
-  `mcuboot`. The Espressif variants, `nrf5340`, `efr32bg27`, `efr32mg24` and `simg301` always use MCUboot and
-  have no such option; `siwx917` has
-  no MCUboot/OTA support at all and also has no such option — see [Silicon Labs](#silicon-labs).
-- **dfu** (*Optional*, boolean or mapping, `nrf52` with an Adafruit or Open DFU bootloader only): Reboot into
+  `mcuboot`. The Espressif variants, `NRF5340`, `EFR32BG27`, `EFR32MG24` and `SIMG301` always use MCUboot and
+  have no such option; `SIWX917` has
+  no MCUboot/OTA support at all and also has no such option — see [Silicon Labs](/components/silabs/).
+- **dfu** (*Optional*, boolean or mapping, `NRF52` with an Adafruit or Open DFU bootloader only): Reboot into
   the bootloader when the host opens USB serial port 0 at 1200 baud, so `esphome upload` needs no button press.
   Defaults to `true` with those bootloaders; rejected with `mcuboot`. As a mapping it accepts:
   - **reset_pin** (*Optional*, [Pin](/guides/configuration-types#pin)): A GPIO wired to the chip's RESET line,
     driven to reset the chip instead of a software reboot. Defaults to `P0.19` (inverted) on `nrf52840dongle`,
     whose Open DFU bootloader only stays in DFU mode after a pin reset.
-- **commander_version** (*Optional*, string, `efr32bg27`/`efr32mg24`/`siwx917` with `framework: type: silabs`
+- **commander_version** (*Optional*, string, `EFR32BG27`/`EFR32MG24`/`SIWX917` with `framework: type: silabs`
   only): Override the version of Silicon Labs' Simplicity Commander CLI used for secure-boot image
   signing. Defaults to a pinned known-good version. Commander is downloaded and cached automatically;
   no extra install step is needed.
 
 ```yaml
 # Example configuration entry -- EFR32MG24 forced onto the pyocd runner
-zephyr:
-  variant: efr32mg24
-  advanced:
-    runner: pyocd
+silabs:
+  variant: EFR32MG24
+  framework:
+    advanced:
+      runner: pyocd
 ```
 
 ```yaml
 # Example configuration entry -- nRF54L15 with a larger main loop stack
-zephyr:
-  variant: nrf54l15
-  advanced:
-    main_stack_size: 8192
+nrf:
+  variant: NRF54L15
+  framework:
+    advanced:
+      main_stack_size: 8192
 ```
 
 ```yaml
 # Example configuration entry -- RP2040 with MCUboot enabled
-zephyr:
-  variant: rp2040
+rp2:
+  variant: RP2040
   board: rpi_pico/rp2040/mcuboot
-  advanced:
-    bootloader: mcuboot
+  framework:
+    type: zephyr
+    advanced:
+      bootloader: mcuboot
 ```
 
 ```yaml
 # Example configuration entry -- nRF52840 keeping its Adafruit UF2 bootloader
-zephyr:
-  variant: nrf52
+nrf:
+  variant: NRF52
   board: adafruit_feather_nrf52840
-  advanced:
-    bootloader: adafruit_nrf52_sd140_v6
+  framework:
+    advanced:
+      bootloader: adafruit_nrf52_sd140_v6
 ```
 
 ```yaml
 # Example configuration entry -- EFR32MG24 on Silicon Labs' own SDK
-zephyr:
-  variant: efr32mg24
+silabs:
+  variant: EFR32MG24
   framework:
     type: silabs
-  advanced:
-    commander_version: "1.24.1"
+    advanced:
+      commander_version: "1.24.1"
 ```
 
 ## `kconfig_options`
@@ -720,15 +513,17 @@ always wins over a value set by a component, use true/false for y/n:
 
 ```yaml
 # Example configuration entry
-zephyr:
-  variant: esp32c6
-  kconfig_options:
-    NET_TCP_TIME_WAIT_DELAY: 1000
-    CONFIG_PM: true
-    # a mapping value targets that sysbuild child image's own config instead of the
-    # main application image
-    mcuboot:
-      BOOT_MAX_IMG_SECTORS: 512
+esp32:
+  variant: ESP32C6
+  framework:
+    type: zephyr
+    kconfig_options:
+      NET_TCP_TIME_WAIT_DELAY: 1000
+      CONFIG_PM: true
+      # a mapping value targets that sysbuild child image's own config instead of the
+      # main application image
+      mcuboot:
+        BOOT_MAX_IMG_SECTORS: 512
 ```
 
 Option names are accepted with or without the leading `CONFIG_`/`SB_CONFIG_` prefix.
@@ -741,11 +536,13 @@ passed per entry:
 
 ```yaml
 # Example configuration entry
-zephyr:
-  variant: esp32c6
+esp32:
+  variant: ESP32C6
   board: esp32c6_devkitc
-  snippets:
-    - espressif-flash-4M
+  framework:
+    type: zephyr
+    snippets:
+      - espressif-flash-4M
 ```
 
 Espressif ships its own official `espressif-flash-2M`/`-4M`/`-8M`/`-16M`/.../`-128M` (and matching
@@ -760,17 +557,19 @@ a genuinely different repo than the board:
 
 ```yaml
 # Example configuration entry -- snippet from a different repo than board_source
-zephyr:
-  variant: esp32c6
+esp32:
+  variant: ESP32C6
   board: my_custom_board
-  board_source:
-    type: git
-    url: https://github.com/example/my-zephyr-boards
-  snippet_source:
-    type: git
-    url: https://github.com/example/my-zephyr-snippets
-  snippets:
-    - my_custom_snippet
+  framework:
+    type: zephyr
+    board_source:
+      type: git
+      url: https://github.com/example/my-zephyr-boards
+    snippet_source:
+      type: git
+      url: https://github.com/example/my-zephyr-snippets
+    snippets:
+      - my_custom_snippet
 ```
 
 ## `overlays`
@@ -792,78 +591,79 @@ slots actually are:
 # Example configuration entry -- Seeed XIAO nRF52840's stock devicetree ships a UF2/SoftDevice
 # partition table with no slot0/slot1 labels; MCUboot needs those to swap between app images.
 # includes the kconfig_options needed to prevent use of uart in MCUboot
-zephyr:
-  variant: nrf52
+nrf:
+  variant: NRF52
   board: xiao_ble
-  overlays:
-    app: |
-      /delete-node/ &reserved_partition_0;
-      /delete-node/ &code_partition;
-      /delete-node/ &storage_partition;
-      /delete-node/ &boot_partition;
+  framework:
+    overlays:
+      app: |
+        /delete-node/ &reserved_partition_0;
+        /delete-node/ &code_partition;
+        /delete-node/ &storage_partition;
+        /delete-node/ &boot_partition;
 
-      &flash0 {
-        partitions {
-          compatible = "fixed-partitions";
-          #address-cells = <1>;
-          #size-cells = <1>;
+        &flash0 {
+          partitions {
+            compatible = "fixed-partitions";
+            #address-cells = <1>;
+            #size-cells = <1>;
 
-          boot_partition: partition@0 {
-            reg = <0x0 0x9000>;
-          };
-          slot0_partition: partition@9000 {
-            reg = <0x9000 0x77000>;
-          };
-          slot1_partition: partition@80000 {
-            reg = <0x80000 0x77000>;
-          };
-          storage_partition: partition@f7000 {
-            reg = <0xf7000 0x8000>;
+            boot_partition: partition@0 {
+              reg = <0x0 0x9000>;
+            };
+            slot0_partition: partition@9000 {
+              reg = <0x9000 0x77000>;
+            };
+            slot1_partition: partition@80000 {
+              reg = <0x80000 0x77000>;
+            };
+            storage_partition: partition@f7000 {
+              reg = <0xf7000 0x8000>;
+            };
           };
         };
-      };
 
-      / {
-        chosen {
-          zephyr,code-partition = &slot0_partition;
-        };
-      };
-    mcuboot: |
-      /delete-node/ &reserved_partition_0;
-      /delete-node/ &code_partition;
-      /delete-node/ &storage_partition;
-      /delete-node/ &boot_partition;
-
-      &flash0 {
-        partitions {
-          compatible = "fixed-partitions";
-          #address-cells = <1>;
-          #size-cells = <1>;
-
-          boot_partition: partition@0 {
-            reg = <0x0 0x9000>;
-          };
-          slot0_partition: partition@9000 {
-            reg = <0x9000 0x77000>;
-          };
-          slot1_partition: partition@80000 {
-            reg = <0x80000 0x77000>;
-          };
-          storage_partition: partition@f7000 {
-            reg = <0xf7000 0x8000>;
+        / {
+          chosen {
+            zephyr,code-partition = &slot0_partition;
           };
         };
-      };
+      mcuboot: |
+        /delete-node/ &reserved_partition_0;
+        /delete-node/ &code_partition;
+        /delete-node/ &storage_partition;
+        /delete-node/ &boot_partition;
 
-      / {
-        chosen {
-          zephyr,code-partition = &boot_partition;
+        &flash0 {
+          partitions {
+            compatible = "fixed-partitions";
+            #address-cells = <1>;
+            #size-cells = <1>;
+
+            boot_partition: partition@0 {
+              reg = <0x0 0x9000>;
+            };
+            slot0_partition: partition@9000 {
+              reg = <0x9000 0x77000>;
+            };
+            slot1_partition: partition@80000 {
+              reg = <0x80000 0x77000>;
+            };
+            storage_partition: partition@f7000 {
+              reg = <0xf7000 0x8000>;
+            };
+          };
         };
-      };
-  kconfig_options:
-    mcuboot:
-      CONFIG_UART_CONSOLE: false
-      CONFIG_CONSOLE: false
+
+        / {
+          chosen {
+            zephyr,code-partition = &boot_partition;
+          };
+        };
+    kconfig_options:
+      mcuboot:
+        CONFIG_UART_CONSOLE: false
+        CONFIG_CONSOLE: false
 ```
 
 > [!IMPORTANT]
@@ -886,23 +686,25 @@ reclaim that space instead:
 
 ```yaml
 # Example configuration entry -- reclaim the LP-core partitions original ESP32 never uses
-zephyr:
-  variant: esp32
-  overlays:
-    app: |
-      /delete-node/ &slot0_lpcore_partition;
-      /delete-node/ &slot1_lpcore_partition;
-      /delete-node/ &storage_partition;
+esp32:
+  variant: ESP32
+  framework:
+    type: zephyr
+    overlays:
+      app: |
+        /delete-node/ &slot0_lpcore_partition;
+        /delete-node/ &slot1_lpcore_partition;
+        /delete-node/ &storage_partition;
 
-      &flash0 {
-        partitions {
-          storage_partition: partition@3a0000 {
-            compatible = "zephyr,mapped-partition";
-            label = "storage";
-            reg = <0x3a0000 DT_SIZE_K(256)>;
+        &flash0 {
+          partitions {
+            storage_partition: partition@3a0000 {
+              compatible = "zephyr,mapped-partition";
+              label = "storage";
+              reg = <0x3a0000 DT_SIZE_K(256)>;
+            };
           };
         };
-      };
 ```
 
 ## `single_slot`
@@ -918,10 +720,10 @@ a new image into it while the application keeps running risks corrupting the run
 not just failing to recover from an interrupted one. Updates on a `single_slot: true` build are
 serial/wired flashing only.
 
-`single_slot: true` requires the MCUboot bootloader. `rp2040`, `rp2350`, `ra4m1`, `stm32l4`, and `stm32c5`
+`single_slot: true` requires the MCUboot bootloader. `RP2040`, `RP2350`, `RA4M1`, `STM32L4`, and `STM32C5`
 default to no bootloader at all and need `advanced: bootloader: mcuboot` set explicitly first —
-every other variant (including `stm32f4`, whose default is already `mcuboot`) uses MCUboot by
-default already. See [Nordic Serial Load Process](#nordic-serial-load-process).
+every other variant (including `STM32F4`, whose default is already `mcuboot`) uses MCUboot by
+default already.
 
 There's no per-variant allowlist for `single_slot: true` — whether it actually works depends entirely
 on the board's flash layout having no `slot1_partition` left in it, which is checked at compile time:
@@ -938,26 +740,27 @@ agree with the application on where the (now single) slot actually is:
 # Example configuration entry -- nrf52dk/nrf52810 (192KB flash) stock layout reserves only 56KB per
 # slot (boot_partition 48K, slot0_partition 56K, slot1_partition 56K, storage_partition 32K).
 # Reclaiming slot1_partition's 56K into slot0_partition doubles the usable application budget to 112K.
-zephyr:
-  variant: nrf52
+nrf:
+  variant: NRF52
   board: nrf52dk/nrf52810
-  single_slot: true
-  overlays:
-    app: |
-      /delete-node/ &slot1_partition;
-      &slot0_partition {
-        reg = <0xc000 0x1c000>;
-      };
-    mcuboot: |
-      / {
-        chosen {
-          zephyr,code-partition = &boot_partition;
+  framework:
+    single_slot: true
+    overlays:
+      app: |
+        /delete-node/ &slot1_partition;
+        &slot0_partition {
+          reg = <0xc000 0x1c000>;
         };
-      };
-      /delete-node/ &slot1_partition;
-      &slot0_partition {
-        reg = <0xc000 0x1c000>;
-      };
+      mcuboot: |
+        / {
+          chosen {
+            zephyr,code-partition = &boot_partition;
+          };
+        };
+        /delete-node/ &slot1_partition;
+        &slot0_partition {
+          reg = <0xc000 0x1c000>;
+        };
 
 logger:
   # nrf52810 has no USB peripheral (USB is nRF52840-only), so logger's default UART
@@ -996,7 +799,7 @@ is printed on the logger's output before the device resets. The next boot also l
 `--skip-bootloader` builds only the application images, since an OTA upload never sends MCUboot. A serial,
 BOOTSEL or pyOCD flash of such a build is refused. Without `ota:`, the flag is ignored.
 
-**`esphome analyze-memory`** works on `platform: zephyr` builds and reads `.west_build/zephyr/zephyr/zephyr.elf`.
+**`esphome analyze-memory`** works on Zephyr builds and reads `.west_build/zephyr/zephyr/zephyr.elf`.
 
 ## Zephyr's own logging vs. heavy debug levels
 
@@ -1009,17 +812,19 @@ at a time when troubleshooting, rather than turning everything up simultaneously
 
 ## mDNS status
 
-[`mdns:`](/components/mdns/) works on the `esp32`, `esp32c3`, `esp32c5`, `esp32c6`, and `esp32s3` variants when Wi-Fi is
-configured without `openthread:` (on `esp32c6`/`esp32c5`/`esp32h2` with `openthread:`, and on
-`nrf52`/`nrf54l15` — which always use `openthread:` — discovery instead goes through OpenThread's
+[`mdns:`](/components/mdns/) works on the `ESP32`, `ESP32C3`, `ESP32C5`, `ESP32C6`, and `ESP32S3` variants when Wi-Fi is
+configured without `openthread:` (on `ESP32C6`/`ESP32C5`/`ESP32H2` with `openthread:`, and on
+`NRF52`/`NRF54L15` — which always use `openthread:` — discovery instead goes through OpenThread's
 own SRP client).
 
 The minimum Zephyr recommended to use with Wi-Fi is 4.5.0 (the default).
 
 ```yaml
 # Example configuration entry
-zephyr:
-  variant: esp32c6
+esp32:
+  variant: ESP32C6
+  framework:
+    type: zephyr
 
 mdns:
 ```
@@ -1031,104 +836,61 @@ stack sizes for the responder's worker and socket-service dispatcher threads.
 ## Adding a new variant
 
 > [!NOTE]
-> This section is for contributors extending `platform: zephyr` with a new chip family (e.g. a
-> future STM32 variant), not for end users writing device configuration.
+> This section is for contributors adding a chip, not for end users writing device configuration.
 
-Every `variant:` carries its own SDK/board/capability data, and the build infrastructure
-(`zephyr/build_zephyr.py`, `zephyr/framework_west.py`, `zephyr/sdk_setup_west.py`) is generic,
-driven entirely by that data. A new variant is a new entry plus variant-specific `config_schema`/
-`to_code` logic — it should not need its own build/framework/SDK-setup files.
+Every variant carries its own SDK, board and capability data, and the build code
+(`zephyr_rtos/build_zephyr.py`, `zephyr_rtos/framework_west.py`, `zephyr_rtos/sdk_setup_west.py`) is
+generic, driven entirely by that data. A new variant is a new entry plus variant-specific
+`config_schema`/`to_code` logic; it should not need its own build, framework or SDK-setup files.
 
-1. **Create `esphome/components/zephyr/variants/<name>.py`.** It must export:
-   - `VARIANT_NAME` — the string stored in `zephyr: variant:` (e.g. `"ESP32C6"`).
-   - `VARIANT` — a `ZephyrVariant` instance (see `zephyr/variants/__init__.py`) describing the
-     chip: its default `ZephyrSDK` (manifest URL, minimum/default version) and `sdk_name` (the
-     `framework: type:` key naming it), `boards`, `valid_toolchains`, any binary `blobs` the west
-     manifest needs, which ESPHome `transports` it supports (`wifi`, `ble`, `openthread`,
-     `zigbee`, `ethernet`, `modem`), MCUboot `swap_methods`, and hardware facts like
-     `adc1_channel_map`/`uart_valid_pins`/`gpio_port_width`/`soc`/`qualifier` that aren't
-     discoverable from devicetree. Use an existing module (e.g. `variants/esp32_c6.py`) as the
-     template. If the chip has more than one buildable SDK (like `nrf52`'s NCS/mainline choice),
-     add the others to `alt_sdks` — see `variants/nrf52.py`. A `ZephyrSDK` whose board-owning repo
-     ref isn't derivable from its own version number (e.g. a vendor SDK that bundles a Zephyr fork
-     under its own, unrelated tag scheme) sets `resolve_boards_ref_via_manifest=True` so
-     `dts_fetch.py` reads the real ref from the SDK's own manifest instead of guessing. A board can
-     also *require* an `alt_sdk` rather than merely support one — `variants/nrf54lm20a.py`'s default
-     board is in NCS, but a newer board on the same chip may not be yet. Nothing currently validates
-     that a non-default board actually exists in whatever framework version gets resolved — a bad
-     combination fails deep inside `west build` instead of at config time (tracked as
-     [issue #45](https://github.com/esphomeplatformzephyr/esphome/issues/45); no per-variant
-     workaround for this until it's fixed generically).
-   - Set `family` if the new variant shares a silicon vendor with an existing variant (e.g.
-     another Nordic or another Espressif chip) — shared behavior should be gated on
-     `zephyr_variant_family()` in the generic components, not duplicated per-variant `elif`
-     chains. Only add a variant-unique field when the underlying hardware model genuinely
-     differs from an existing one; don't assume a sibling variant's field shape applies to
-     yours just because the chips look similar. For example, ESP32's `adc1_channel_map` maps a
-     devicetree channel index to the real silicon ADC channel; nRF52's SAADC has no such
-     mapping, since its devicetree channel index is an arbitrary config slot and the real pin
-     comes from a separate `zephyr,input-positive` property — this needed its own `adc_ain_map`
-     field rather than reusing `adc1_channel_map`.
-   - Set `gpio_node_prefix` if the new chip's Zephyr devicetree doesn't label its GPIO port nodes
-     `gpio0`/`gpio1`/... or `gpioa`/`gpiob`/... (the default, `"gpio"`, is correct for every
-     variant currently supported — Nordic, Espressif, Silicon Labs, STM32, RP2040 — but that's a
-     coincidence, not a Zephyr-wide convention). Renesas RA labels its ports `ioport0`/`ioport1`/...
-     instead, and plenty of other vendors elsewhere in the Zephyr tree use their own scheme
-     (`porta`/`portb`, `main_gpio`, `gpio_prt`, ...). Don't assume the default is safe for a new
-     variant just because every existing one uses it — grep that SoC's actual `.dtsi` under the
-     Zephyr SDK for `gpio-controller;` and read the real node label. Getting this wrong is silent
-     at compile time (`DEVICE_DT_GET_OR_NULL()` on a nonexistent node just resolves to `nullptr`)
-     and only surfaces at runtime as every GPIO pin logging "gpio %u is not ready."
-   - `config_schema(config)` — validates/normalizes the variant's config and calls
-     `set_core_data(...)`.
-   - `to_code(config)` — calls the shared `zephyr_to_code(config)` plus any variant-specific
-     codegen (build flags, defines, `zephyr_add_prj_conf(...)` calls).
-2. **Register the module** by adding its name to `_VARIANT_MODULES` in
-   `zephyr/variants/__init__.py`. This alone makes the variant a valid value for `zephyr:
-   variant:` — the schema validates against `cv.one_of(*VARIANTS, ...)`, which reads the
-   registry, so no separate schema change is needed.
-3. **Add a `ZEPHYR_VARIANT_<NAME>` constant** in `zephyr/const.py`, matching `VARIANT_NAME`.
-4. **No dispatch code is needed.** `zephyr/__init__.py` finds your module with
-   `get_variant_module(variant)` and calls its `config_schema` and `to_code`, and it runs the
-   `family` module's `to_code` (e.g. `variants/stm32_family.py`) before yours.
-5. **Check every component that already handles `platform: zephyr`**, not just the ones that
-   seem obviously relevant. A new hardware variant can expose gaps in components you wouldn't
-   guess at up front — internal temperature sensing and USB-based logging both needed real
-   fixes for the nRF52 variant that weren't caught until compiled against real hardware, because
-   the initial review only checked components assumed to be relevant. Most components gate on
-   `CORE.is_zephyr` rather than listing every hardware variant by name, so a new hardware variant
-   usually needs no changes to those. Three things to watch for specifically:
-   - Some conditionals are keyed to a *different, unrelated* platform's own flag — for example
-     `CORE.is_nrf52`, which belongs to the separate NCS-based `platform: nrf52`, not this one. A
-     new same-silicon `platform: zephyr` variant is not automatically covered by these checks and
-     may need its own, separate branch.
-   - Never import from, or edit, a sibling platform's component code to get equivalent behavior,
-     even when the underlying hardware is identical — keep each platform's implementation fully
-     independent.
-   - Search for every `cv.SplitDefault(..., zephyr=...)` call across the codebase (buffer sizes,
-     timeouts, feature toggles, etc.) and check that the single value chosen for the whole `zephyr`
-     platform still makes sense for your new variant. `SplitDefault` branches on platform only, not
-     on `zephyr: variant:`, so one `zephyr=...` default is shared uniformly across every variant —
-     RA4M1 with 32KB of RAM, nRF52840, and ESP32 with 520KB alike. A default sized for a
-     RAM-rich variant can silently be wrong (or just wasteful) for a tightly constrained one, and
-     nothing will flag the mismatch automatically.
-6. **Update `esphome/core/defines.h`.** Any `cg.add_define()` or build flag your variant's codegen
-   emits — directly, or via a shared component gating on `zephyr_variant_family()` — must also be
-   added here by hand. This file is static-analysis-only and isn't populated automatically, and is
-   easy to forget since nothing fails at build time when an entry is missing.
-7. **DTS-driven board/bus resolution** (`zephyr/dts_fetch.py`, `zephyr/dts_lookup.py`) is also
-   generic, keyed off the registered `ZephyrVariant`. If the new chip family needs its own way of
-   deriving default bus pins from devicetree, add a `pinctrl_extractors` entry to the variant
-   (e.g. `variants/esp32_c6.py`'s `{"i2c": get_i2c_pinctrl_esp32}`); otherwise nothing else to do
-   here.
-8. **Add tests**: `tests/components/zephyr/test.zephyr-<slug>.yaml` for the variant itself, plus
-   `tests/test_build_components/build_components_base.zephyr-<slug>.yaml` and `test.zephyr-<slug>.yaml`
-   files under the components the new variant supports (see the existing `esp32-c6`/`esp32-h2`
-   files for the pattern). Test targets are auto-discovered by filename suffix, so
-   no separate CI registration step is needed. Verify new code paths against a real
-   `esphome compile`/`esphome run`, not just against Kconfig/devicetree documentation — several
-   real gaps (ADC handling, toolchain selection, exception-stack-trace linking) were only found
-   this way.
+1. **Add the variant name constant** to the platform's `const.py`, e.g. `VARIANT_STM32C5 = "STM32C5"` in
+   `esphome/components/stm32/const.py`. A chip from a vendor with no platform yet needs a new platform
+   component too: copy `esphome/components/stm32/`, set its `FAMILIES`, and add the platform to
+   `esphome/const.py`.
+2. **Create `esphome/components/zephyr_rtos/variants/<name>.py`.** It must export:
+   - `VARIANT_NAME`: the constant from step 1.
+   - `VARIANT`: a `ZephyrVariant` instance (see `zephyr_rtos/variants/__init__.py`) describing the chip:
+     its default `ZephyrSDK` (manifest URL, minimum/default version) and `sdk_name` (the
+     `framework: type:` naming it), `boards`, any binary `blobs` the west manifest needs, which ESPHome
+     `transports` it supports (`wifi`, `ble`, `openthread`, `zigbee`, `ethernet`, `modem`), MCUboot
+     `swap_methods`, and hardware facts like `adc1_channel_map`, `uart_valid_pins`, `die_temp_nodes`,
+     `gpio_port_width`, `soc` and `qualifier`. Use an existing module (e.g. `variants/esp32_c6.py`) as the
+     template. If the chip has more than one buildable SDK (like `NRF52`'s NCS/mainline choice), add the
+     others to `alt_sdks`; see `variants/nrf52.py`.
+   - `family`: set it to the vendor family the variant shares code with (`esp32`, `nordic`, `stm32`,
+     ...). The family must be in the platform's `FAMILIES`, and the family module
+     (`variants/<family>_family.py`) runs before the variant's own `to_code`.
+   - `config_schema(config)`: validates the variant's own options and calls `set_core_data(...)`.
+   - `to_code(config)`: any variant-specific code generation.
+3. **Register the module** by adding its name to `_VARIANT_MODULES` in `zephyr_rtos/variants/__init__.py`.
+   This alone makes the variant a valid `variant:` value on its platform.
+4. **Prefer devicetree and parameters over code.** Common code driven by the devicetree comes first.
+   Where variants must differ, use a `ZephyrVariant` field set in the variant file. Code in the variant
+   file is the last resort.
+
+   Set `gpio_node_prefix` if the chip's devicetree doesn't label its GPIO port nodes `gpio0`/`gpio1`/...
+   or `gpioa`/`gpiob`/... (Renesas RA uses `ioport0`/`ioport1`/...). Grep the SoC's `.dtsi` for
+   `gpio-controller;` and read the real node label: getting this wrong is silent at compile time and only
+   shows at runtime as every GPIO pin logging "gpio %u is not ready."
+5. **Check every component that supports Zephyr**, not just the ones that seem relevant. Components
+   gate on `CORE.using_zephyr_rtos` and on `zephyr_variant_family()`, so a new variant usually needs no
+   changes there. Watch for:
+   - `CORE.is_nrf52`, which belongs to the separate `nrf52` platform, not to `nrf`.
+   - `cv.SplitDefault` values. Zephyr builds look up `<platform>_<variant>` and then `<platform>`
+     (`stm32_l4`, then `stm32`; on `esp32` and `rp2`, `esp32_c3_zephyr` then `esp32_zephyr`). Check that the
+     platform-wide value suits your chip: RA4M1 with 32KB of RAM and ESP32 with 520KB share one
+     `renesas`/`esp32_zephyr` default unless a variant key overrides it.
+6. **Update `esphome/core/defines.h`** with any define your variant's code generation emits. It is used
+   only for static analysis, so nothing fails when an entry is missing.
+7. **Board and bus lookups** (`zephyr_rtos/dts_fetch.py`, `zephyr_rtos/dts_lookup.py`) are generic. If the
+   chip family needs its own way of deriving default bus pins from the devicetree, add a
+   `pinctrl_extractors` entry to the variant (e.g. `variants/esp32_c6.py`'s
+   `{"i2c": get_i2c_pinctrl_esp32}`).
+8. **Add tests**: `tests/test_build_components/build_components_base.<platform>-<variant>-<framework>.yaml`
+   (e.g. `stm32-f4-zephyr`, `nrf-54l15-ncs`) and `test.<platform>-<variant>-<framework>.yaml` files under
+   `tests/components/zephyr/` and the components the variant supports. Test targets are found by file name,
+   so no CI registration is needed. Verify new code paths with a real `esphome compile`/`esphome run`,
+   not only against Kconfig and devicetree documentation.
 
 ## See Also
 

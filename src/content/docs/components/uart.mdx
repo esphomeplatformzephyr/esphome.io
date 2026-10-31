@@ -54,17 +54,17 @@ uart:
 
 - **baud_rate** (**Required**, int): The baud rate of the UART bus.
 - **tx_pin** (*Optional*, [Pin](/guides/configuration-types#pin)): The pin to send data to from the ESP's perspective. Use the full pin
-  schema and set `inverted: true` to invert logic levels. Not supported by host platform. On the `zephyr` platform,
-  only some variants support this (see [`zephyr` notes](#zephyr) below).
+  schema and set `inverted: true` to invert logic levels. Not supported by host platform. On the Zephyr platforms,
+  only some variants support this (see [Zephyr](#zephyr) below).
 
 - **rx_pin** (*Optional*, [Pin](/guides/configuration-types#pin)): The pin to receive data on from the ESP's perspective. Use the full pin
-  schema and set `inverted: true` to invert logic levels. Not supported by host platform. Same `zephyr` variant restriction as **tx_pin**.
+  schema and set `inverted: true` to invert logic levels. Not supported by host platform. Same Zephyr variant restriction as **tx_pin**.
 
 - **flow_control_pin** (*Optional*, [Pin](/guides/configuration-types#pin)): ESP32 only. The pin used to for hardware RS485 flow control.
   Use of this setting enables half-duplex mode. Use the full pin schema and set `inverted: true` to invert logic levels.
 
-- **port** (*Optional*, string): Host and `zephyr` platforms only. On host, a Unix-style device path. On `zephyr`,
-  the UART peripheral to use — see [`zephyr` notes](#zephyr) below.
+- **port** (*Optional*, string): Host and Zephyr platforms only. On host, a Unix-style device path. On Zephyr,
+  the UART peripheral to use — see [Zephyr](#zephyr) below.
 - **rx_buffer_size** (*Optional*, int): The size of the buffer used for receiving UART messages. Increase if you use an
   integration that needs to read big payloads from UART. Defaults to `256`.
 - **tx_buffer_size** (*Optional*, int): ESP32 only. The size of the buffer that holds bytes waiting to be sent. When
@@ -334,13 +334,13 @@ uart:
   port: "/dev/ttyUSB0"
 ```
 
-## `zephyr`
+## Zephyr
 
-On the `zephyr` platform, UART peripherals are identified by `port:` (Zephyr's own devicetree-driven UART
+On the [Zephyr platforms](/components/zephyr/) (not `nrf52`), UART peripherals are identified by `port:` (Zephyr's own devicetree-driven UART
 numbering) rather than by pins alone:
 
 ```yaml
-# Example configuration entry for the zephyr platform
+# Example configuration entry for a Zephyr platform
 uart:
   port: UART1
   baud_rate: 115200
@@ -363,19 +363,20 @@ uart:
 
     ```yaml
     # Example configuration entry: uart on RTT channel 3
-    zephyr:
-      variant: nrf54l15
-      overlays:
-        app: |
-          / {
-            rtt3: rtt_chan3 {
-              compatible = "segger,rtt-uart";
+    nrf:
+      variant: NRF54L15
+      framework:
+        overlays:
+          app: |
+            / {
+              rtt3: rtt_chan3 {
+                compatible = "segger,rtt-uart";
+              };
             };
-          };
-      kconfig_options:
-        USE_SEGGER_RTT: true
-        SEGGER_RTT_MAX_NUM_UP_BUFFERS: 4
-        SEGGER_RTT_MAX_NUM_DOWN_BUFFERS: 4
+        kconfig_options:
+          USE_SEGGER_RTT: true
+          SEGGER_RTT_MAX_NUM_UP_BUFFERS: 4
+          SEGGER_RTT_MAX_NUM_DOWN_BUFFERS: 4
 
     uart:
       - id: rtt_bus

@@ -209,12 +209,12 @@ The following integers are the wakeup causes:
 
 ## Zephyr-based platforms
 
-This applies to the `nrf52` platform and to the `zephyr` platform's Espressif, Nordic and STM32 variants; the other
-`zephyr` variants do not support `deep_sleep`, since their chips have no power-off mode in
+This applies to the `nrf52` platform and to the Espressif, Nordic and STM32 variants on Zephyr; the other
+Zephyr variants do not support `deep_sleep`, since their chips have no power-off mode in
 Zephyr. When `sleep_duration` is configured, or Zigbee is used, the device resumes normal operation after waking up.
 Otherwise, it performs a full reset instead of continuing execution.
 
-On those `zephyr` variants, **wakeup_pin** wakes the chip from power-off, and also ends a `sleep_duration` wait early.
+On those Zephyr variants, **wakeup_pin** wakes the chip from power-off, and also ends a `sleep_duration` wait early.
 **wakeup_pin_mode** works as on the ESP32.
 
 ## `deep_sleep.enter` Action

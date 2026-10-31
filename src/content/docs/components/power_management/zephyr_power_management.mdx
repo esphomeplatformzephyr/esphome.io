@@ -7,7 +7,7 @@ import APIRef from '@components/APIRef.astro';
 
 
 The `zephyr_power_management` platform enables Zephyr's system power management (`CONFIG_PM`), device power-down, and
-CPU frequency scaling (`subsys/cpu_freq`), for boards built on the [Zephyr platform](/components/zephyr/).
+CPU frequency scaling (`subsys/cpu_freq`), for boards built with [Zephyr](/components/zephyr/).
 
 Every option here depends on what the target board's own devicetree actually declares, not on which
 family (ESP32, nRF52, RP2040, Silicon Labs) it belongs to. Two boards in the same family can differ.
@@ -47,7 +47,7 @@ power_management:
 - **policy** (*Optional*, one of `on_demand`, `pressure`): Enables Zephyr's CPU Frequency Scaling
   subsystem with the given policy. Only valid on a board whose devicetree declares a
   `performance-states` node. See [CPU frequency scaling](#cpu-frequency-scaling) below -- as of this
-  writing, no board any ESPHome Zephyr platform targets has one, so this option currently fails
+  writing, no board ESPHome targets with Zephyr has one, so this option currently fails
   configuration validation everywhere.
 - All other options from [Power Management](/components/power_management/#configuration-variables).
 
@@ -132,7 +132,7 @@ scheduler-pressure-based) periodically selects a P-state from the ones the board
 via a `performance-states` node. This is unrelated to `CONFIG_PM`/**enable_light_sleep** -- CPU frequency
 scaling and system sleep are independent Zephyr subsystems.
 
-As of this writing, no board any ESPHome Zephyr platform targets declares a `performance-states` node --
+As of this writing, no board ESPHome targets with Zephyr declares a `performance-states` node --
 none has a real CPU frequency scaling driver (`HAS_CPU_FREQ`) in Zephyr yet. Setting **policy** on any of
 them fails configuration validation. The option and its validation exist so the component is ready for a
 board that does have one, without further changes here.

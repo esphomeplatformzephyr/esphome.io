@@ -7,7 +7,7 @@ import APIRef from '@components/APIRef.astro';
 
 <span id="i2c"></span>
 
-This component sets up the I²C bus for your `esp32`, `esp8266`, `rp2040`, `nrf52`, `zephyr`, or `host` platform. In order for these components
+This component sets up the I²C bus for your `esp32`, `esp8266`, `rp2040`, `nrf52`, [Zephyr](/components/zephyr/), or `host` platform. In order for these components
 to work correctly, you need to define the I²C bus in your configuration. On ESP32 (both Arduino and ESP-IDF
 frameworks), internal pullup resistors are enabled by default. On ESP8266, the internal 10kΩ pullup resistors
 are always enabled. External pullups are still recommended for longer wire runs or multiple devices.
@@ -69,7 +69,7 @@ i2c:
 
 - **device** (**Required**, string): The I²C device path to use (e.g., `/dev/i2c-0`, `/dev/i2c-1`).
 
-### `zephyr`
+### Zephyr
 
 - **sda**, **scl** (*Optional*, [Pin](/guides/configuration-types#pin)): If not set, ESPHome tries to read the
   pin assignments from the board's devicetree. If they can't be determined this way (for example, a custom
@@ -79,7 +79,7 @@ i2c:
   needed if config validation reports it couldn't resolve the bus automatically.
 
 > [!NOTE]
-> Only a single I²C bus is currently supported on the `zephyr` platform.
+> Only a single I²C bus is currently supported on the Zephyr platforms.
 
 ## Multiple I²C buses
 

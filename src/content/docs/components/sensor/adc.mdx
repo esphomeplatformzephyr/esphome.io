@@ -32,8 +32,8 @@ sensor:
 - **pin** (**Required**, [Pin](/guides/configuration-types#pin)): The pin to measure the voltage on.
   Or on the ESP8266 or Raspberry Pi Pico it could alternatively be set to `VCC`, see [Measuring VCC](#adc-vcc).
 
-- **attenuation** (*Optional*): On ESP32, or on the `zephyr` platform with an `esp32`/`esp32c3`/`esp32c6`/`esp32h2`/`esp32s3`
-  variant. Specify the ADC attenuation to use. See [ESP32 Attenuation](#esp32-attenuation). Defaults to `0db`.
+- **attenuation** (*Optional*): On ESP32, including with `framework: type: zephyr` on the `ESP32`/`ESP32C3`/`ESP32C6`/`ESP32H2`/`ESP32S3`
+  variants. Specify the ADC attenuation to use. See [ESP32 Attenuation](#esp32-attenuation). Defaults to `0db`.
 
 - **raw** (*Optional*): Allows to read the raw ADC output without any conversion or calibration. See [Different ESP32-ADC behavior since 2021.11](#adc-raw). Defaults to `false`.
 - **samples** (*Optional*): The amount of ADC readings to take per sensor update. On the ESP32 this value is ignored if `attenuation` is set to `auto`. Defaults to `1`.
@@ -105,7 +105,7 @@ This is handled automatically by the code, but it's worth noting if you're debug
 
 ## Zephyr
 
-Pin availability on the `zephyr` platform's `esp32`/`esp32c3`/`esp32c6`/`esp32h2`/`esp32s3` variants matches ADC1 in
+Pin availability with `framework: type: zephyr` on the `ESP32`/`ESP32C3`/`ESP32C6`/`ESP32H2`/`ESP32S3` variants matches ADC1 in
 [ESP32 pins and Hardware Details](#adc-esp32_pins) above (ADC2 is not exposed). `attenuation:` behaves the
 same as on ESP32, defaulting to `0db`.
 

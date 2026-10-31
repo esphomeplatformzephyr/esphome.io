@@ -73,9 +73,9 @@ ota:
   - `2040` for the RP2040
   - `8892` for Beken chips
   - `8082` for the [host platform](/components/host/)
-  - `4232` for the `zephyr` platform
+  - `4232` for the `nrf`, `nxp`, `renesas`, `silabs` and `stm32` platforms
 
-- **swap_method** (*Optional*, string): `zephyr` platform only. The MCUboot image-swap algorithm to use for
+- **swap_method** (*Optional*, string): Zephyr platforms other than `nrf52` only. The MCUboot image-swap algorithm to use for
   applying an update. One of `scratch`, `move`, `offset`. See [Swap methods](#swap-methods) below for
   what each one does and the per-variant defaults/availability.
 - **id** (*Optional*, [ID](/guides/configuration-types#id)): Manually specify the ID used for code generation.
@@ -91,7 +91,7 @@ ota:
 
 ## Swap methods
 
-`swap_method` (`zephyr` platform only) picks which of [MCUboot](https://docs.mcuboot.com/)'s image-swap
+`swap_method` (Zephyr platforms other than `nrf52` only) picks which of [MCUboot](https://docs.mcuboot.com/)'s image-swap
 algorithms applies an update. All three write the new image into the secondary (update) slot first,
 then swap it into the primary (boot) slot in place, sector by sector -- they differ in what extra flash
 space that swap needs and how the work is split between the two slots:
@@ -125,7 +125,7 @@ flash layout and stops with an error if the chosen method does not fit it.
 
 > [!IMPORTANT]
 > The Espressif boards have no `scratch_partition` in Zephyr 4.5 and newer. To use `scratch` on an Espressif
-> variant, add one with `zephyr: overlays:`.
+> variant, add one with `framework: overlays:`.
 
 ## Updating the Password
 
